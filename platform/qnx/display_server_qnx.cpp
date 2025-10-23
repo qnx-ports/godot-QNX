@@ -130,14 +130,25 @@ Point2i DisplayServerQnx::screen_get_position(int p_screen) const {
 }
 
 Size2i DisplayServerQnx::screen_get_size(int p_screen) const {
-	// return OS_QNX::get_singleton()->get_display_size();
-	return Size2i(1920, 1080);// Size2i(640,480); // Rect2i(0, 0, display_size.width, display_size.height);
+	// Get display size from EGL manager
+	if (egl_manager) {
+		return egl_manager->get_display_size();
+	}
+	
+	// Fallback size
+	return Size2i(1920, 1080);
 }
 
 
 Rect2i DisplayServerQnx::screen_get_usable_rect(int p_screen) const {
-	// Size2i display_size = OS_QNX::get_singleton()->get_display_size();
-	return Rect2i(0,0,1920,1080);// Rect2i(0,0,640,480); // Rect2i(0, 0, display_size.width, display_size.height);
+	// Get display size from EGL manager
+	if (egl_manager) {
+		Size2i size = egl_manager->get_display_size();
+		return Rect2i(0, 0, size.width, size.height);
+	}
+	
+	// Fallback size
+	return Rect2i(0, 0, 1920, 1080);
 }
 
 
@@ -808,13 +819,13 @@ void DisplayServerQnx::window_set_size(const Size2i p_size, WindowID p_window_id
 }
 
 Size2i DisplayServerQnx::window_get_size(DisplayServer::WindowID p_window_id ) const {
-	//return OS_QNX::get_singleton()->get_display_size();
-	return Size2i(1920, 1080);// Size2i(640,480);
+	Size2i size = screen_get_size(0); // Use dynamic screen size
+	return size;
 }
 
 Size2i DisplayServerQnx::window_get_size_with_decorations(DisplayServer::WindowID p_window_id) const {
-	// return OS_QNX::get_singleton()->get_display_size();
-	return Size2i(1920, 1080); // Size2i(640,480);
+	Size2i size = screen_get_size(0); // Use dynamic screen size
+	return size;
 }
 
 void DisplayServerQnx::window_set_mode(DisplayServer::WindowMode, int) {

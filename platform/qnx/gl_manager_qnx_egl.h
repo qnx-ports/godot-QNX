@@ -97,6 +97,9 @@ private:
 
 	screen_context_t m_screenContext;
 	screen_window_t m_screenWindow;
+	screen_display_t m_screenDisplay;
+	
+	Size2i m_detectedScreenSize;
 
 public:
 	int display_get_native_visual_id(void *p_display);
@@ -121,6 +124,8 @@ public:
 	Error initialize(void *p_native_display = nullptr);
 
 	screen_context_t getScreenContext() {return m_screenContext;}
+	
+	Size2i get_display_size() const {return m_detectedScreenSize;}
 
 	GLManagerEGL_Screen();
 	virtual ~GLManagerEGL_Screen();

@@ -58,9 +58,9 @@ int GLManagerEGL_Screen::_get_gldisplay_id() {
     }
 
     // screen attributes
+	int screenSize[2];
     const int screenFormat  = SCREEN_FORMAT_RGBA8888;
     const int screenUsage   = SCREEN_USAGE_READ | SCREEN_USAGE_WRITE | SCREEN_USAGE_OPENGL_ES3;
-    const int screenSize[2] = {1920, 1080};// {640, 480};
     const int windowBuffers = 2;
 
     res = screen_create_window(&m_screenWindow, m_screenContext);
@@ -69,6 +69,23 @@ int GLManagerEGL_Screen::_get_gldisplay_id() {
         ERR_PRINT("screen_create_window() FAILED");
         return -1;
     }
+	
+	res = screen_get_window_property_pv(m_screenWindow, SCREEN_PROPERTY_DISPLAY,
+										(void **)&m_screenDisplay);
+	if (0 != res)
+	{
+		ERR_PRINT("screen_window_get_property_pv(display) FAILED");
+		return -1;
+	}
+	
+	res = screen_get_display_property_iv(m_screenDisplay, SCREEN_PROPERTY_SIZE, screenSize);
+	if (0 != res)
+	{
+		ERR_PRINT("screen_get_display_property_iv(screenSize) FAILED");
+		return -1;
+	}
+	
+	m_detectedScreenSize = Size2i(screenSize[0], screenSize[1]);
 
     res = screen_set_window_property_iv(m_screenWindow, SCREEN_PROPERTY_FORMAT, &screenFormat);
     if (0 != res)
@@ -377,6 +394,8 @@ Error GLManagerEGL_Screen::initialize(void *p_native_display) {
 
 
 GLManagerEGL_Screen::GLManagerEGL_Screen() {
+	// Initialize default screen size
+	m_detectedScreenSize = Size2i(1920, 1080);
 }
 
 GLManagerEGL_Screen::~GLManagerEGL_Screen() {
