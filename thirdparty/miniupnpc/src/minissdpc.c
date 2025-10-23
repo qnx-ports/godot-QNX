@@ -79,7 +79,7 @@ struct sockaddr_un {
 #endif
 #endif
 
-#if defined(HAS_IP_MREQN) && defined(NEED_STRUCT_IP_MREQN)
+#if defined(HAS_IP_MREQN) && defined(NEED_STRUCT_IP_MREQN) && __QNX__ < 800
 /* Several versions of glibc don't define this structure,
  * define it here and compile with CFLAGS NEED_STRUCT_IP_MREQN */
 struct ip_mreqn

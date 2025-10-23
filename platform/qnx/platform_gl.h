@@ -38,7 +38,9 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
+#if __QNX__ < 800
 #include <GLES3/gl3ext.h>
+#endif
 
 
 #endif // PLATFORM_GL_H
