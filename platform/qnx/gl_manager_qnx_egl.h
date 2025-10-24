@@ -99,6 +99,7 @@ private:
 	screen_window_t m_screenWindow;
 	screen_display_t m_screenDisplay;
 	
+	int m_screenFormat;
 	Size2i m_detectedScreenSize;
 
 public:

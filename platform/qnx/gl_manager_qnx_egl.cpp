@@ -35,6 +35,149 @@
 // #ifdef EGL_ENABLED // this seems to pull some dependencies to GLAD
 #ifdef QNX_ENABLED //
 
+EGLConfig choose_config(EGLDisplay egl_display, int screenFormat) {
+	struct {
+		int red_size;
+		int green_size;
+		int blue_size;
+		int alpha_size;
+	} egl_conf_attr;
+	
+	// Get RGBA sizes from screen format
+	switch (screenFormat) {
+		case SCREEN_FORMAT_RGBA4444:
+		case SCREEN_FORMAT_RGBX4444:
+			egl_conf_attr.red_size = 4; 
+			egl_conf_attr.green_size = 4; 
+			egl_conf_attr.blue_size = 4; 
+			egl_conf_attr.alpha_size = 4;
+			break;
+		case SCREEN_FORMAT_RGBA5551:
+		case SCREEN_FORMAT_RGBX5551:
+			egl_conf_attr.red_size = 5; 
+			egl_conf_attr.green_size = 5; 
+			egl_conf_attr.blue_size = 5; 
+			egl_conf_attr.alpha_size = 1;
+			break;
+		case SCREEN_FORMAT_RGB565:
+			egl_conf_attr.red_size = 5; 
+			egl_conf_attr.green_size = 6; 
+			egl_conf_attr.blue_size = 5; 
+			egl_conf_attr.alpha_size = 0;
+			break;
+		case SCREEN_FORMAT_RGB888:
+			egl_conf_attr.red_size = 8; 
+			egl_conf_attr.green_size = 8; 
+			egl_conf_attr.blue_size = 8; 
+			egl_conf_attr.alpha_size = 0;
+			break;
+		case SCREEN_FORMAT_RGBA8888:
+		case SCREEN_FORMAT_RGBX8888:
+		case SCREEN_FORMAT_BGRA8888:
+		case SCREEN_FORMAT_BGRX8888:
+			egl_conf_attr.red_size = 8; 
+			egl_conf_attr.green_size = 8; 
+			egl_conf_attr.blue_size = 8; 
+			egl_conf_attr.alpha_size = 8;
+			break;
+		case SCREEN_FORMAT_RGBA1010102:
+		case SCREEN_FORMAT_RGBX1010102:
+		case SCREEN_FORMAT_BGRA1010102:
+		case SCREEN_FORMAT_BGRX1010102:
+			egl_conf_attr.red_size = 10; 
+			egl_conf_attr.green_size = 10; 
+			egl_conf_attr.blue_size = 10; 
+			egl_conf_attr.alpha_size = 2;
+			break;
+		default:
+			// default to RGBA8888
+			egl_conf_attr.red_size = 8; 
+			egl_conf_attr.green_size = 8; 
+			egl_conf_attr.blue_size = 8; 
+			egl_conf_attr.alpha_size = 8;
+			break;
+	}
+	
+	// Get all available configs
+	int egl_num_configs = 0;
+	EGLBoolean rc = eglGetConfigs(egl_display, nullptr, 0, &egl_num_configs);
+	if (rc != EGL_TRUE || egl_num_configs == 0) {
+		ERR_PRINT("eglGetConfigs failed to get number of configs");
+		return nullptr;
+	}
+	
+	EGLConfig *egl_configs = (EGLConfig*)malloc(egl_num_configs * sizeof(EGLConfig));
+	if (!egl_configs) {
+		ERR_PRINT(vformat("could not allocate memory for %d EGL configs", egl_num_configs));
+		return nullptr;
+	}
+	
+	rc = eglGetConfigs(egl_display, egl_configs, egl_num_configs, &egl_num_configs);
+	if (rc != EGL_TRUE) {
+		ERR_PRINT("eglGetConfigs failed to retrieve configs");
+		free(egl_configs);
+		return nullptr;
+	}
+	
+	// Find the best EGL config using our RGBA values
+	EGLConfig choosen_config = nullptr;
+	
+	for (int i = 0; i < egl_num_configs; i++) {
+		EGLint config_red, config_green, config_blue, config_alpha, config_depth;
+		EGLint surface_type, renderable_type;
+		
+		// Get config attributes with error checking
+		if (!eglGetConfigAttrib(egl_display, egl_configs[i], EGL_RED_SIZE, &config_red)) {
+			WARN_PRINT("Failed to get EGL_RED_SIZE");
+			continue;
+		}
+		if (!eglGetConfigAttrib(egl_display, egl_configs[i], EGL_GREEN_SIZE, &config_green)) {
+			WARN_PRINT("Failed to get EGL_GREEN_SIZE");
+			continue;
+		}
+		if (!eglGetConfigAttrib(egl_display, egl_configs[i], EGL_BLUE_SIZE, &config_blue)) {
+			WARN_PRINT("Failed to get EGL_BLUE_SIZE");
+			continue;
+		}
+		if (!eglGetConfigAttrib(egl_display, egl_configs[i], EGL_ALPHA_SIZE, &config_alpha)) {
+			WARN_PRINT("Failed to get EGL_ALPHA_SIZE");
+			continue;
+		}
+		if (!eglGetConfigAttrib(egl_display, egl_configs[i], EGL_DEPTH_SIZE, &config_depth)) {
+			WARN_PRINT("Failed to get EGL_DEPTH_SIZE");
+			continue;
+		}
+		if (!eglGetConfigAttrib(egl_display, egl_configs[i], EGL_SURFACE_TYPE, &surface_type)) {
+			WARN_PRINT("Failed to get EGL_SURFACE_TYPE");
+			continue;
+		}
+		if (!eglGetConfigAttrib(egl_display, egl_configs[i], EGL_RENDERABLE_TYPE, &renderable_type)) {
+			WARN_PRINT("Failed to get EGL_RENDERABLE_TYPE");
+			continue;
+		}
+		
+		// Check if this config matches our desired requirements
+		if ((surface_type & EGL_WINDOW_BIT) && 
+		    (renderable_type & EGL_OPENGL_ES3_BIT) &&
+		    config_red == egl_conf_attr.red_size &&
+		    config_green == egl_conf_attr.green_size &&
+		    config_blue == egl_conf_attr.blue_size &&
+		    config_alpha == egl_conf_attr.alpha_size &&
+		    config_depth != 0) {
+			choosen_config = egl_configs[i];
+			break;
+		}
+	}
+	
+	// Use the first found configuration if no match
+	if (!choosen_config) {
+		choosen_config = egl_configs[0];
+		WARN_PRINT("No matching EGL config found, using first found configuration");
+	}
+	
+	free(egl_configs);
+	return choosen_config;
+}
 
 // Creates and caches a GLDisplay. Returns -1 on error.
 int GLManagerEGL_Screen::_get_gldisplay_id() {
@@ -59,14 +202,20 @@ int GLManagerEGL_Screen::_get_gldisplay_id() {
 
     // screen attributes
 	int screenSize[2];
-    const int screenFormat  = SCREEN_FORMAT_RGBA8888;
-    const int screenUsage   = SCREEN_USAGE_READ | SCREEN_USAGE_WRITE | SCREEN_USAGE_OPENGL_ES3;
+    const int screenUsage   = SCREEN_USAGE_OPENGL_ES2 | SCREEN_USAGE_OPENGL_ES3;
     const int windowBuffers = 2;
 
     res = screen_create_window(&m_screenWindow, m_screenContext);
     if (0 != res)
     {
         ERR_PRINT("screen_create_window() FAILED");
+        return -1;
+    }
+
+	res = screen_get_window_property_iv(m_screenWindow, SCREEN_PROPERTY_FORMAT, &m_screenFormat);
+    if (0 != res) 
+	{
+        ERR_PRINT("screen_set_window_property_iv(SCREEN_PROPERTY_FORMAT) FAILED");
         return -1;
     }
 	
@@ -87,7 +236,7 @@ int GLManagerEGL_Screen::_get_gldisplay_id() {
 	
 	m_detectedScreenSize = Size2i(screenSize[0], screenSize[1]);
 
-    res = screen_set_window_property_iv(m_screenWindow, SCREEN_PROPERTY_FORMAT, &screenFormat);
+    res = screen_set_window_property_iv(m_screenWindow, SCREEN_PROPERTY_FORMAT, &m_screenFormat);
     if (0 != res)
     {
         ERR_PRINT("screen_set_window_property_iv(SCREEN_PROPERTY_FORMAT) FAILED");
@@ -151,51 +300,15 @@ int GLManagerEGL_Screen::_get_gldisplay_id() {
 
 
 Error GLManagerEGL_Screen::_gldisplay_create_context(GLDisplay &p_gldisplay) {
-	EGLint attribs[] = {
-		EGL_RED_SIZE,
-		1,
-		EGL_BLUE_SIZE,
-		1,
-		EGL_GREEN_SIZE,
-		1,
-		EGL_DEPTH_SIZE,
-		24,
-		EGL_NONE,
-	};
 
-	EGLint attribs_layered[] = {
-		EGL_RED_SIZE,
-		8,
-		EGL_GREEN_SIZE,
-		8,
-		EGL_GREEN_SIZE,
-		8,
-		EGL_ALPHA_SIZE,
-		8,
-		EGL_DEPTH_SIZE,
-		24,
-        EGL_STENCIL_SIZE,
-       	8,
-        // attributes.push_back(EGL_SAMPLE_BUFFERS);
-        // attributes.push_back(_traits->sampleBuffers);
-        EGL_SAMPLES,
-        0,
-		EGL_RENDERABLE_TYPE,	// QNX
-        EGL_OPENGL_ES3_BIT,		// QNX
-		EGL_NONE,
-	};
-
-	EGLint config_count = 0;
-
-	if (true) {// (OS::get_singleton()->is_layered_allowed()) {
-		eglChooseConfig(p_gldisplay.egl_display, attribs_layered, &p_gldisplay.egl_config, 1, &config_count);
-	} else {
-		eglChooseConfig(p_gldisplay.egl_display, attribs, &p_gldisplay.egl_config, 1, &config_count);
+	
+	p_gldisplay.egl_config = choose_config(p_gldisplay.egl_display, m_screenFormat);
+	
+	if (!p_gldisplay.egl_config) {
+		ERR_PRINT("No suitable EGL config found");
+		return ERR_CANT_CREATE;
 	}
-
-	ERR_FAIL_COND_V(eglGetError() != EGL_SUCCESS, ERR_BUG);
-	ERR_FAIL_COND_V(config_count == 0, ERR_UNCONFIGURED);
-
+	
 	Vector<EGLint> context_attribs = _get_platform_context_attribs();
 	p_gldisplay.egl_context = eglCreateContext(p_gldisplay.egl_display, p_gldisplay.egl_config, EGL_NO_CONTEXT, (context_attribs.size() > 0) ? context_attribs.ptr() : nullptr);
 	ERR_FAIL_COND_V_MSG(p_gldisplay.egl_context == EGL_NO_CONTEXT, ERR_CANT_CREATE, vformat("Can't create an EGL context. Error code: %d", eglGetError()));
