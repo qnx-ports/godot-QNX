@@ -347,8 +347,8 @@ void DisplayServerQnx::process_events() {
     while (0 == screen_get_event(l_context, m_event, 0))
     {
         std::int32_t l_propertyType = 0;
-        const auto   l_result       = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_TYPE, &l_propertyType);
-        if ((0 != l_result) || (SCREEN_EVENT_NONE == l_propertyType))
+        int res = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_TYPE, &l_propertyType);
+        if ((0 != res) || (SCREEN_EVENT_NONE == l_propertyType))
         {
             break;
         }
@@ -357,8 +357,19 @@ void DisplayServerQnx::process_events() {
         std::int32_t touch_id{0};
         if (isTouchEvent(l_propertyType))
         {
-            screen_get_event_property_iv(m_event, SCREEN_PROPERTY_POSITION, touch_position);
-            screen_get_event_property_iv(m_event, SCREEN_PROPERTY_TOUCH_ID, &touch_id);
+            res = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_POSITION, touch_position);
+			if (0 != res)
+			{
+				WARN_PRINT("screen_get_event_property_iv(SCREEN_PROPERTY_POSITION) FAILED");
+				break;
+			}
+
+            res = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_TOUCH_ID, &touch_id);
+			if (0 != res)
+			{
+				WARN_PRINT("screen_get_event_property_iv(SCREEN_PROPERTY_TOUCH_ID) FAILED");
+				break;
+			}
         }
 
         switch (l_propertyType)
@@ -428,6 +439,98 @@ void DisplayServerQnx::process_events() {
 
 				break;
 			}
+			// Handle mouse pointer events
+			case SCREEN_EVENT_POINTER:
+			{
+				std::int32_t mouse_position[2] = {0, 0};
+				std::int32_t mouse_buttons = 0;
+				
+				res = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_POSITION, mouse_position);
+				if (0 != res)
+				{
+					WARN_PRINT("screen_get_event_property_iv(SCREEN_PROPERTY_POSITION) FAILED");
+					break;
+				}
+				res = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_BUTTONS, &mouse_buttons);
+				if (0 != res)
+				{
+					WARN_PRINT("screen_get_event_property_iv(SCREEN_PROPERTY_BUTTONS) FAILED");
+					break;
+				}
+
+				Point2i new_mouse_pos(mouse_position[0], mouse_position[1]);
+				
+				// Handle mouse motion
+				if (new_mouse_pos != mouse_pos) {
+					Ref<InputEventMouseMotion> mm;
+					mm.instantiate();
+					mm->set_window_id(MAIN_WINDOW_ID);
+					
+					mm->set_button_mask(mouse_button_mask);
+					
+					mm->set_position(new_mouse_pos);
+					mm->set_global_position(new_mouse_pos);
+					
+					mm->set_relative(new_mouse_pos - mouse_pos);
+					mm->set_relative_screen_position(new_mouse_pos - mouse_pos);
+					
+					last_mouse_pos = mouse_pos;
+					mouse_pos = new_mouse_pos;
+					
+					mm->set_velocity(Input::get_singleton()->get_last_mouse_velocity());
+					mm->set_screen_velocity(mm->get_velocity());
+					
+					Input::get_singleton()->parse_input_event(mm);
+				}
+				
+				// Handle mouse button events
+				BitField<MouseButtonMask> new_button_mask = 0;
+				
+				if (mouse_buttons & SCREEN_LEFT_MOUSE_BUTTON) {
+					new_button_mask.set_flag(MouseButtonMask::LEFT);
+				}
+				if (mouse_buttons & SCREEN_MIDDLE_MOUSE_BUTTON) {
+					new_button_mask.set_flag(MouseButtonMask::MIDDLE);
+				}
+				if (mouse_buttons & SCREEN_RIGHT_MOUSE_BUTTON) {
+					new_button_mask.set_flag(MouseButtonMask::RIGHT);
+				}
+				
+				// Check for button state changes
+				BitField<MouseButtonMask> button_changes = mouse_button_mask ^ new_button_mask;
+				
+				if (button_changes != 0) {
+					struct ButtonMapping {
+						MouseButton button;
+						MouseButtonMask mask;
+					};
+					
+					const ButtonMapping button_mappings[] = {
+						{ MouseButton::LEFT, MouseButtonMask::LEFT },
+						{ MouseButton::RIGHT, MouseButtonMask::RIGHT },
+						{ MouseButton::MIDDLE, MouseButtonMask::MIDDLE }
+					};
+					
+					// Process each button press
+					for (const auto& mapping : button_mappings) {
+						if (button_changes.has_flag(mapping.mask)) {
+							Ref<InputEventMouseButton> mb;
+							mb.instantiate();
+							mb->set_window_id(MAIN_WINDOW_ID);
+							mb->set_position(new_mouse_pos);
+							mb->set_global_position(new_mouse_pos);
+							mb->set_button_index(mapping.button);
+							mb->set_pressed(new_button_mask.has_flag(mapping.mask));
+							mb->set_button_mask(new_button_mask);
+							
+							Input::get_singleton()->parse_input_event(mb);
+						}
+					}
+					
+					mouse_button_mask = new_button_mask;
+				}		
+				break;
+			}
 			default:
 			{
 				WARN_PRINT(vformat("DisplayServerQnx::process_events() received unhandled event of type %d", l_propertyType));	
@@ -485,36 +588,103 @@ Vector<String> DisplayServerQnx::get_rendering_drivers_func() {
 
 
 void DisplayServerQnx::mouse_set_mode(MouseMode p_mode) {
-	//WARN_PRINT("Mouse is not supported by this display server.");
+	ERR_FAIL_INDEX(p_mode, MouseMode::MOUSE_MODE_MAX);
+	if (p_mode == mouse_mode_base) {
+		return;
+	}
+	mouse_mode_base = p_mode;
+	_mouse_update_mode();
 }
 
 DisplayServer::MouseMode DisplayServerQnx::mouse_get_mode() const {
-	return MOUSE_MODE_VISIBLE;
+	return mouse_mode;
 }
 
 void DisplayServerQnx::mouse_set_mode_override(MouseMode p_mode) {
-	//WARN_PRINT("Mouse is not supported by this display server.");
+	ERR_FAIL_INDEX(p_mode, MouseMode::MOUSE_MODE_MAX);
+	if (p_mode == mouse_mode_override) {
+		return;
+	}
+	mouse_mode_override = p_mode;
+	_mouse_update_mode();
 }
 
 DisplayServer::MouseMode DisplayServerQnx::mouse_get_mode_override() const {
-	return MOUSE_MODE_VISIBLE;
+	return mouse_mode_override;
 }
 
 void DisplayServerQnx::mouse_set_mode_override_enabled(bool p_override_enabled) {
-	//ARN_PRINT("Mouse is not supported by this display server.");
+	if (p_override_enabled == mouse_mode_override_enabled) {
+		return;
+	}
+	mouse_mode_override_enabled = p_override_enabled;
+	_mouse_update_mode();
 }
 
 bool DisplayServerQnx::mouse_is_mode_override_enabled() const {
-	return false;
+	return mouse_mode_override_enabled;
+}
+
+void DisplayServerQnx::_mouse_update_mode() {
+	MouseMode wanted_mouse_mode = mouse_mode_override_enabled
+			? mouse_mode_override
+			: mouse_mode_base;
+
+	if (wanted_mouse_mode == mouse_mode) {
+		return;
+	}
+
+	mouse_mode = wanted_mouse_mode;
+	
+	if(egl_manager) {
+		screen_session_t session;
+		int cursor_shape = SCREEN_CURSOR_SHAPE_ARROW;
+		screen_context_t context = egl_manager->getScreenContext();
+		screen_window_t window = egl_manager->getScreenWindow();
+		int res = screen_create_session_type(&session, context, SCREEN_EVENT_POINTER);
+		if (0 != res)
+		{
+			WARN_PRINT("screen_create_session_type() FAILED");
+			return;
+		}
+		res = screen_set_session_property_pv(session, SCREEN_PROPERTY_WINDOW, (void**) &window);
+		if (0 != res)
+		{
+			WARN_PRINT("screen_set_session_property_pv(SCREEN_PROPERTY_WINDOW) FAILED");
+			return;
+		}
+
+		// Do not show cursor in captured mode
+		if (wanted_mouse_mode == MOUSE_MODE_CAPTURED) {
+			cursor_shape = SCREEN_CURSOR_SHAPE_NONE;
+			res = screen_set_session_property_iv(session, SCREEN_PROPERTY_CURSOR, &cursor_shape);
+			if (0 != res)
+			{
+				WARN_PRINT("screen_set_session_property_iv(SCREEN_CURSOR_SHAPE_NONE) FAILED");
+				return;
+			}
+		}
+
+		// The only modes that show a cursor are VISIBLE and CONFINED
+		else if (wanted_mouse_mode == MOUSE_MODE_VISIBLE || wanted_mouse_mode == MOUSE_MODE_CONFINED) {
+			cursor_shape = SCREEN_CURSOR_SHAPE_ARROW;
+			res = screen_set_session_property_iv(session, SCREEN_PROPERTY_CURSOR, &cursor_shape);
+			if (0 != res)
+			{
+				WARN_PRINT("screen_set_session_property_iv(SCREEN_CURSOR_SHAPE_ARROW) FAILED");
+				return;
+			}
+		}
+	}
 }
 
 
 Point2i DisplayServerQnx::mouse_get_position() const {
-	return Point2i(); //ERR_FAIL_V_MSG(Point2i(), "Mouse is not supported by this display server.");
+	return mouse_pos;
 }
 
 BitField<MouseButtonMask> DisplayServerQnx::mouse_get_button_state() const {
-	return 0; //ERR_FAIL_V_MSG(0, "Mouse is not supported by this display server.");
+	return mouse_button_mask;
 }
 
 
@@ -544,6 +714,11 @@ DisplayServerQnx::DisplayServerQnx(const String &p_rendering_driver, WindowMode 
 
 	// Input.
 	Input::get_singleton()->set_event_dispatch_function(_dispatch_input_events);
+
+	// Initialize mouse state
+	mouse_pos = Point2i(0, 0);
+	mouse_button_mask = 0;
+	last_mouse_pos = Point2i(0, 0);
 
 	native_menu = memnew(NativeMenu);
 

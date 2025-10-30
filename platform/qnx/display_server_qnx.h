@@ -78,6 +78,16 @@ class DisplayServerQnx : public DisplayServer {
 	};
 	Vector<TouchPos> touch;
 
+	Point2i mouse_pos;
+	BitField<MouseButtonMask> mouse_button_mask;
+	Point2i last_mouse_pos;
+	
+	MouseMode mouse_mode = MOUSE_MODE_VISIBLE;
+	MouseMode mouse_mode_base = MOUSE_MODE_VISIBLE;
+	MouseMode mouse_mode_override = MOUSE_MODE_VISIBLE;
+	bool mouse_mode_override_enabled = false;
+	void _mouse_update_mode();
+
 	String rendering_driver;
 
 	NativeMenu *native_menu = nullptr;

@@ -125,7 +125,8 @@ public:
 	Error initialize(void *p_native_display = nullptr);
 
 	screen_context_t getScreenContext() {return m_screenContext;}
-	
+	screen_window_t getScreenWindow() {return m_screenWindow;}
+
 	Size2i get_display_size() const {return m_detectedScreenSize;}
 
 	GLManagerEGL_Screen();
