@@ -81,6 +81,8 @@ class DisplayServerQnx : public DisplayServer {
 	Point2i mouse_pos;
 	BitField<MouseButtonMask> mouse_button_mask;
 	Point2i last_mouse_pos;
+
+	void _get_key_modifier_state(int p_qnx_mods, Ref<InputEventWithModifiers> state);
 	
 	MouseMode mouse_mode = MOUSE_MODE_VISIBLE;
 	MouseMode mouse_mode_base = MOUSE_MODE_VISIBLE;

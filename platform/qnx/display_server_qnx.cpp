@@ -32,7 +32,7 @@
 #include "os_qnx.h"
 
 #ifdef QNX_ENABLED
-
+#include "key_mapping_qnx.h"
 #ifdef VULKAN_ENABLED
 #include "servers/rendering/renderer_rd/renderer_compositor_rd.h"
 #endif
@@ -318,6 +318,18 @@ bool isTouchEvent(std::int32_t f_propertyType)
         (SCREEN_EVENT_MTOUCH_MOVE == f_propertyType) || (SCREEN_EVENT_MTOUCH_RELEASE == f_propertyType));
 }
 
+void DisplayServerQnx::_get_key_modifier_state(int p_qnx_mods, Ref<InputEventWithModifiers> state) {
+	state->set_shift_pressed((p_qnx_mods & KEYMOD_SHIFT) != 0);
+	state->set_ctrl_pressed((p_qnx_mods & KEYMOD_CTRL) != 0);
+
+	// AltGr should not count as Alt
+	state->set_alt_pressed((p_qnx_mods & KEYMOD_ALT) != 0 && (p_qnx_mods & KEYMOD_ALTGR) == 0);
+
+	// QNX doesn't have a Meta key
+	// For now, we'll leave it as false
+	state->set_meta_pressed(false);
+}
+
 void DisplayServerQnx::process_events() {
 
     if (nullptr == m_event)
@@ -531,6 +543,90 @@ void DisplayServerQnx::process_events() {
 				}		
 				break;
 			}
+			case SCREEN_EVENT_KEYBOARD:
+            {
+                int flags = 0;
+                int mods = 0;
+                int sym = 0;
+				int scan = 0;
+				int cap = 0;
+
+                res = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_FLAGS, &flags);
+				if (0 != res)
+				{
+					WARN_PRINT("screen_get_event_property_iv(SCREEN_PROPERTY_FLAGS) FAILED");
+					break;
+				}
+                res = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_MODIFIERS, &mods);
+				if (0 != res)
+				{
+					WARN_PRINT("screen_get_event_property_iv(SCREEN_PROPERTY_MODIFIERS) FAILED");
+					break;
+				}
+                res = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_SYM, &sym);
+				if (0 != res)
+				{
+					WARN_PRINT("screen_get_event_property_iv(SCREEN_PROPERTY_SYM) FAILED");
+					break;
+				}
+				res = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_SCAN, &scan);
+				if (0 != res)
+				{
+					WARN_PRINT("screen_get_event_property_iv(SCREEN_PROPERTY_SCAN) FAILED");
+					break;
+				}
+				res = screen_get_event_property_iv(m_event, SCREEN_PROPERTY_KEY_CAP, &cap);
+				if (0 != res)
+				{
+					WARN_PRINT("screen_get_event_property_iv(SCREEN_PROPERTY_KEY_CAP) FAILED");
+					break;
+				}
+
+                const bool is_pressed = (flags & KEY_DOWN) != 0;
+                const bool is_repeat = (flags & KEY_REPEAT) != 0;
+
+                Key godot_key = KeyMappingQNX::get_keycode(sym);
+                Key physical_key = KeyMappingQNX::get_scancode(scan);
+				char32_t unicode = KeyMappingQNX::get_unicode(cap);
+				KeyLocation loc = KeyMappingQNX::get_location((unsigned)scan);
+
+                Ref<InputEventKey> k;
+                k.instantiate();
+                k->set_window_id(MAIN_WINDOW_ID);
+				
+				_get_key_modifier_state(mods, k);
+
+				//don't set mod state if modifier keys are released by themselves
+				//else event.is_action() will not work correctly here
+				if (!is_pressed) {
+					if (k->get_keycode() == Key::SHIFT) {
+						k->set_shift_pressed(false);
+					} else if (k->get_keycode() == Key::CTRL) {
+						k->set_ctrl_pressed(false);
+					} else if (k->get_keycode() == Key::ALT) {
+						k->set_alt_pressed(false);
+					} else if (k->get_keycode() == Key::META) {
+						k->set_meta_pressed(false);
+					}
+				}
+
+                k->set_pressed(is_pressed);
+                k->set_echo(is_repeat);
+                k->set_keycode(godot_key);
+				k->set_physical_keycode(physical_key);
+                k->set_key_label(godot_key);
+				
+				if (is_pressed && (flags & SCREEN_FLAG_CAP_VALID)) {
+					k->set_unicode(unicode);
+				}
+				
+				if (loc != KeyLocation::UNSPECIFIED) {
+					k->set_location(loc);
+				}
+
+                Input::get_singleton()->parse_input_event(k);
+                break;
+            }
 			default:
 			{
 				WARN_PRINT(vformat("DisplayServerQnx::process_events() received unhandled event of type %d", l_propertyType));	
@@ -711,6 +807,9 @@ void DisplayServerQnx::_bind_methods(){
 
 DisplayServerQnx::DisplayServerQnx(const String &p_rendering_driver, WindowMode p_mode, VSyncMode p_vsync_mode, uint32_t p_flags, const Vector2i *p_position, const Vector2i &p_resolution, int p_screen, Context p_context, int64_t p_parent_window, Error &r_error) {	
 	r_error = ERR_UNAVAILABLE;
+
+	// Initialize keyboard mappings
+	KeyMappingQNX::initialize();
 
 	// Input.
 	Input::get_singleton()->set_event_dispatch_function(_dispatch_input_events);

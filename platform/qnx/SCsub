@@ -7,6 +7,7 @@ import platform_qnx_builders
 
 common_qnx = [
     "display_server_qnx.cpp",
+    "key_mapping_qnx.cpp",
     "gl_manager_qnx_egl.cpp",
     "crash_handler_qnx.cpp",
     "os_qnx.cpp",
