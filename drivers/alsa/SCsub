@@ -3,7 +3,7 @@ from misc.utility.scons_hints import *
 
 Import("env")
 
-if "alsa" in env and env["alsa"]:
+if "alsa" in env and env["alsa"] and env["platform"] != "qnx":
     if env["use_sowrap"]:
         env.add_source_files(env.drivers_sources, "asound-so_wrap.c")
 

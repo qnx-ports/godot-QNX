@@ -154,7 +154,7 @@ Error AudioDriverALSA::init_output_device() {
 }
 
 Error AudioDriverALSA::init() {
-#ifdef SOWRAP_ENABLED
+#if defined(SOWRAP_ENABLED) && !defined(__QNX__)
 #ifdef DEBUG_ENABLED
 	int dylibloader_verbose = 1;
 #else
@@ -174,7 +174,12 @@ Error AudioDriverALSA::init() {
 	String version = String::utf8(snd_asoundlib_version());
 	Vector<String> ver_parts = version.split(".");
 	if (ver_parts.size() >= 2) {
+#ifdef __QNX__
+		// Accept ALSA/SALSA 1.0.x or higher
+		ver_ok = (ver_parts[0].to_int() >= 1);
+#else
 		ver_ok = ((ver_parts[0].to_int() == 1 && ver_parts[1].to_int() >= 1)) || (ver_parts[0].to_int() > 1); // 1.1.0
+#endif
 	}
 	print_verbose(vformat("ALSA %s detected.", version));
 	if (!ver_ok) {

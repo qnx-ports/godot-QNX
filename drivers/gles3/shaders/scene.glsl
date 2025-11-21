@@ -496,7 +496,9 @@ layout(std140) uniform MaterialUniforms { // ubo:3
 #GLOBALS
 
 /* clang-format on */
+#ifndef QNX_ENABLED
 invariant gl_Position;
+#endif
 
 void main() {
 	highp vec3 vertex = vertex_angle_attrib.xyz * compressed_aabb_size + compressed_aabb_position;

@@ -123,7 +123,7 @@ EGLConfig choose_config(EGLDisplay egl_display, int screenFormat) {
 	EGLConfig choosen_config = nullptr;
 	
 	for (int i = 0; i < egl_num_configs; i++) {
-		EGLint config_red, config_green, config_blue, config_alpha, config_depth;
+		EGLint config_red, config_green, config_blue, config_alpha, config_depth, config_stencil;
 		EGLint surface_type, renderable_type;
 		
 		// Get config attributes with error checking
@@ -147,6 +147,10 @@ EGLConfig choose_config(EGLDisplay egl_display, int screenFormat) {
 			WARN_PRINT("Failed to get EGL_DEPTH_SIZE");
 			continue;
 		}
+		if (!eglGetConfigAttrib(egl_display, egl_configs[i], EGL_STENCIL_SIZE, &config_stencil)) {
+			WARN_PRINT("Failed to get EGL_STENCIL_SIZE");
+			continue;
+		}
 		if (!eglGetConfigAttrib(egl_display, egl_configs[i], EGL_SURFACE_TYPE, &surface_type)) {
 			WARN_PRINT("Failed to get EGL_SURFACE_TYPE");
 			continue;
@@ -163,7 +167,8 @@ EGLConfig choose_config(EGLDisplay egl_display, int screenFormat) {
 		    config_green == egl_conf_attr.green_size &&
 		    config_blue == egl_conf_attr.blue_size &&
 		    config_alpha == egl_conf_attr.alpha_size &&
-		    config_depth != 0) {
+		    config_depth == 24 &&
+		    config_stencil == 8) {
 			choosen_config = egl_configs[i];
 			break;
 		}

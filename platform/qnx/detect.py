@@ -322,12 +322,12 @@ def configure(env: "SConsEnvironment"):
         if not env["use_sowrap"]:
             if os.system("pkg-config --exists alsa") == 0:  # 0 means found
                 env.ParseConfig("pkg-config alsa --cflags --libs")
-                env.Append(CPPDEFINES=["ALSA_ENABLED", "ALSAMIDI_ENABLED"])
+                env.Append(CPPDEFINES=["ALSA_ENABLED"])
             else:
                 print_warning("ALSA development libraries not found. Disabling the ALSA audio driver.")
                 env["alsa"] = False
         else:
-            env.Append(CPPDEFINES=["ALSA_ENABLED", "ALSAMIDI_ENABLED"])
+            env.Append(CPPDEFINES=["ALSA_ENABLED"])
 
     if env["pulseaudio"]:
         if not env["use_sowrap"]:
@@ -398,7 +398,9 @@ def configure(env: "SConsEnvironment"):
 
     env.Prepend(CPPPATH=["#platform/qnx"])
     if env["use_sowrap"]:
-        env.Prepend(CPPPATH=["#thirdparty/linuxbsd_headers"])
+        # Skip adding linuxbsd_headers for QNX
+        # env.Prepend(CPPPATH=["#thirdparty/linuxbsd_headers"])
+        pass
 
     env.Append(
         CPPDEFINES=[
@@ -487,7 +489,7 @@ def configure(env: "SConsEnvironment"):
     env.Prepend(CFLAGS=["-DNEED_STRUCT_IP_MREQN"])
     env.Prepend(CXXFLAGS=["-D_QNX_SOURCE"]) # _QNX_SOURCE used by pthread and qcc sets it only for gnu++17 
 
-    env.Append(LIBS=["socket", "screen", "GLESv2", "EGL"])
+    env.Append(LIBS=["socket", "screen", "GLESv2", "EGL" ,"asound"])
 
     if platform.libc_ver()[0] != "glibc":
         if env["execinfo"]:

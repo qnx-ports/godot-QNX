@@ -4230,6 +4230,9 @@ RasterizerSceneGLES3::RasterizerSceneGLES3() {
 		if (config->force_vertex_shading) {
 			global_defines += "\n#define USE_VERTEX_LIGHTING\n";
 		}
+#ifdef QNX_ENABLED
+		global_defines += "\n#define QNX_ENABLED\n";
+#endif
 		material_storage->shaders.scene_shader.initialize(global_defines);
 		scene_globals.shader_default_version = material_storage->shaders.scene_shader.version_create();
 		material_storage->shaders.scene_shader.version_bind_shader(scene_globals.shader_default_version, SceneShaderGLES3::MODE_COLOR);
