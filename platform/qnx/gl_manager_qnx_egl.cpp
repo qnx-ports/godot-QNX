@@ -198,7 +198,7 @@ int GLManagerEGL_Screen::_get_gldisplay_id() {
 	GLDisplay new_gldisplay;
 	// new_gldisplay.display = p_display;
 
-    int res = screen_create_context(&m_screenContext, SCREEN_BUFFER_PROVIDER_CONTEXT);
+    int res = screen_create_context(&m_screenContext, SCREEN_APPLICATION_CONTEXT);
     if (0 != res)
     {
         ERR_PRINT("GL EGL screen_create_context() FAILED");
