@@ -32,6 +32,8 @@
 
 #include "drivers/gles3/rasterizer_gles3.h"
 
+#include <unistd.h>
+
 // #ifdef EGL_ENABLED // this seems to pull some dependencies to GLAD
 #ifdef QNX_ENABLED //
 
@@ -517,6 +519,20 @@ GLManagerEGL_Screen::GLManagerEGL_Screen() {
 }
 
 GLManagerEGL_Screen::~GLManagerEGL_Screen() {
+	
+	// Release the EGL context
+	release_current();
+
+    int res = screen_destroy_window(m_screenWindow);
+    if (0 != res)
+    {
+        ERR_PRINT("screen_destroy_window() FAILED");
+		return;	
+    }
+
+	//FIXME: without some delay, window will crash on exit
+	sleep(1);
+
 	for (unsigned int i = 0; i < displays.size(); i++) {
 		eglTerminate(displays[i].egl_display);
 	}

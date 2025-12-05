@@ -989,25 +989,20 @@ DisplayServerQnx::~DisplayServerQnx() {
 	 	native_menu = nullptr;
 	}
 
-//  	if (main_window.visible) {
-//  #ifdef VULKAN_ENABLED
-//  		if (rendering_device) {
-//  			rendering_device->screen_free(MAIN_WINDOW_ID);
-//  		}
-//  
-//  		if (rendering_context) {
-//  			rendering_context->window_destroy(MAIN_WINDOW_ID);
-//  		}
-//  #endif
-//  
-//  #ifdef GLES3_ENABLED
-//  		if (egl_manager) {
-//  			egl_manager->window_destroy(MAIN_WINDOW_ID);
-//  		}
-//  #endif
-//  	}
-//  
+#ifdef VULKAN_ENABLED
+	if (rendering_device) {
+		rendering_device->screen_free(MAIN_WINDOW_ID);
+	}
 
+	if (rendering_context) {
+		rendering_context->window_destroy(MAIN_WINDOW_ID);
+	}
+#endif
+#ifdef GLES3_ENABLED
+	if (egl_manager) {
+		egl_manager->window_destroy(MAIN_WINDOW_ID);
+	}
+#endif
 
 	// Destroy all drivers.
 #ifdef RD_ENABLED
@@ -1020,6 +1015,12 @@ DisplayServerQnx::~DisplayServerQnx() {
 	}
 #endif
 
+#ifdef GLES3_ENABLED
+	if (egl_manager) {
+		memdelete(egl_manager);
+		egl_manager = nullptr;
+	}
+#endif
 }
 
 void DisplayServerQnx::register_qnx_driver() {
