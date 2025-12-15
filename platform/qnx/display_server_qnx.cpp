@@ -783,7 +783,14 @@ BitField<MouseButtonMask> DisplayServerQnx::mouse_get_button_state() const {
 	return mouse_button_mask;
 }
 
+void DisplayServerQnx::cursor_set_shape(CursorShape p_shape) {
+	// Implement cursor shape changes
+}
 
+DisplayServer::CursorShape DisplayServerQnx::cursor_get_shape() const {
+	// Implement cursor shape changes
+	return CURSOR_ARROW;
+}
 
 DisplayServer *DisplayServerQnx::create_func(const String &p_rendering_driver, WindowMode p_mode, VSyncMode p_vsync_mode, uint32_t p_flags, const Vector2i *p_position, const Vector2i &p_resolution, int p_screen, Context p_context, int64_t p_parent_window, Error &r_error) {
 	DisplayServer *ds = memnew(DisplayServerQnx(p_rendering_driver, p_mode, p_vsync_mode, p_flags, p_position, p_resolution, p_screen, p_context, p_parent_window, r_error));
@@ -1008,10 +1015,12 @@ DisplayServerQnx::~DisplayServerQnx() {
 #ifdef RD_ENABLED
 	if (rendering_device) {
 		memdelete(rendering_device);
+		rendering_device = nullptr;
 	}
 
 	if (rendering_context) {
 		memdelete(rendering_context);
+		rendering_context = nullptr;
 	}
 #endif
 

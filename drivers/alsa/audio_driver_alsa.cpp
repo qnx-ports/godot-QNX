@@ -337,6 +337,12 @@ void AudioDriverALSA::unlock() {
 
 void AudioDriverALSA::finish_output_device() {
 	if (pcm_handle) {
+		int state = snd_pcm_state(pcm_handle);
+		
+		if (state == SND_PCM_STATE_RUNNING || state == SND_PCM_STATE_DRAINING) {
+			snd_pcm_drain(pcm_handle);
+		}
+
 		snd_pcm_close(pcm_handle);
 		pcm_handle = nullptr;
 	}
