@@ -519,19 +519,6 @@ GLManagerEGL_Screen::GLManagerEGL_Screen() {
 }
 
 GLManagerEGL_Screen::~GLManagerEGL_Screen() {
-	
-	// Release the EGL context
-	release_current();
-
-    int res = screen_destroy_window(m_screenWindow);
-    if (0 != res)
-    {
-        ERR_PRINT("screen_destroy_window() FAILED");
-		return;	
-    }
-
-	//FIXME: without some delay, window will crash on exit
-	sleep(1);
 
 	for (unsigned int i = 0; i < displays.size(); i++) {
 		eglTerminate(displays[i].egl_display);
