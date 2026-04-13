@@ -93,7 +93,9 @@ static inline char* ImplGetEnv(const char* name) { return getenv(name); }
 
 // clang-format off
 static inline char* ImplGetSecureEnv(const char* name) {
-#ifdef HAVE_SECURE_GETENV
+#if defined(__QNX__)
+    return ImplGetEnv(name);
+#elif HAVE_SECURE_GETENV
     return secure_getenv(name);
 #elif defined(HAVE___SECURE_GETENV)
     return __secure_getenv(name);

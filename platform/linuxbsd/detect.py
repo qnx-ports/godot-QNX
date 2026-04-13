@@ -464,7 +464,8 @@ def configure(env: "SConsEnvironment"):
             env.Append(CPPDEFINES=["LIBDECOR_ENABLED"])
 
         env.Append(CPPDEFINES=["WAYLAND_ENABLED"])
-        env.Append(LIBS=["rt"])  # Needed by glibc, used by _allocate_shm_file
+        if not platform.system() == "QNX":
+            env.Append(LIBS=["rt"])  # Needed by glibc, used by _allocate_shm_file
 
     if env["vulkan"]:
         env.Append(CPPDEFINES=["VULKAN_ENABLED", "RD_ENABLED"])
@@ -477,7 +478,11 @@ def configure(env: "SConsEnvironment"):
     if env["opengl3"]:
         env.Append(CPPDEFINES=["GLES3_ENABLED"])
 
-    env.Append(LIBS=["pthread"])
+    if not platform.system() == "QNX":
+        env.Append(LIBS=["pthread"])
+    
+    if platform.system() == "QNX":
+        env.Append(LIBS=["socket", "GLESv2", "EGL"])
 
     if platform.system() == "Linux":
         env.Append(LIBS=["dl"])

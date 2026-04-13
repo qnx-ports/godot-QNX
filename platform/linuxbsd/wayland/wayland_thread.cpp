@@ -34,6 +34,8 @@
 
 #ifdef __FreeBSD__
 #include <dev/evdev/input-event-codes.h>
+#elif __QNX__
+#include "input-event-codes.h"
 #else
 // Assume Linux.
 #include <linux/input-event-codes.h>
