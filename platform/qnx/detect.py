@@ -32,7 +32,7 @@ def get_opts():
     return [
         EnumVariable("linker", "Linker program", "default", ("default", "bfd", "gold", "lld", "mold")),
         BoolVariable("use_llvm", "Use the LLVM compiler", False),
-        BoolVariable("use_static_cpp", "Link libgcc and libstdc++ statically for better portability", True),
+        BoolVariable("use_static_cpp", "Link libgcc and libstdc++ statically for better portability", False),
         BoolVariable("use_coverage", "Test Godot coverage", False),
         BoolVariable("use_ubsan", "Use LLVM/GCC compiler undefined behavior sanitizer (UBSAN)", False),
         BoolVariable("use_asan", "Use LLVM/GCC compiler address sanitizer (ASAN)", False),
@@ -82,13 +82,6 @@ def configure(env: "SConsEnvironment"):
     supported_arches = ["x86_32", "x86_64", "arm32", "arm64"]
     validate_arch(env["arch"], get_name(), supported_arches)
 
-    ## Build type
-
-    if env.dev_build:
-        # This is needed for our crash handler to work properly.
-        # gdb works fine without it though, so maybe our crash handler could too.
-        env.Append(LINKFLAGS=["-rdynamic"])
-
     # Cross-compilation
     qnx_host = get_env_qnx_host()
     qnx_target = get_env_qnx_target()
@@ -109,8 +102,9 @@ def configure(env: "SConsEnvironment"):
         cross_compile = "ntox86_64"
 
     ## Compiler configuration
-    env["CC"] = f"{compiler_path}/{cross_compile}-gcc"
-    env["CXX"] = f"{compiler_path}/{cross_compile}-g++"
+    if not env["use_llvm"]:
+        env["CC"] = f"{compiler_path}/{cross_compile}-gcc"
+        env["CXX"] = f"{compiler_path}/{cross_compile}-g++"
 
 
     if env["linker"] != "default":
@@ -208,8 +202,6 @@ def configure(env: "SConsEnvironment"):
             env["RANLIB"] = "gcc-ranlib"
             env["AR"] = "gcc-ar"
 
-    env.Append(CCFLAGS=["-pipe"])
-
     ## Dependencies
 
     if env["use_sowrap"]:
@@ -227,15 +219,20 @@ def configure(env: "SConsEnvironment"):
 
     if not env["builtin_freetype"]:
         env.ParseConfig("pkg-config freetype2 --cflags --libs")
+        env.Append(LIBS=["bz2"])
 
     if not env["builtin_graphite"]:
         env.ParseConfig("pkg-config graphite2 --cflags --libs")
 
     if not env["builtin_icu4c"]:
         env.ParseConfig("pkg-config icu-i18n icu-uc --cflags --libs")
+        env.Append(LIBS=["icudata"])
 
     if not env["builtin_harfbuzz"]:
         env.ParseConfig("pkg-config harfbuzz harfbuzz-icu --cflags --libs")
+        env.ParseConfig("pkg-config glib-2.0 --cflags --libs")
+        env.Append(LIBS=["iconv"])
+        env.ParseConfig("pkg-config libpcre2-8 --cflags --libs")
 
     if not env["builtin_icu4c"] or not env["builtin_harfbuzz"]:
         print_warning(
@@ -274,6 +271,7 @@ def configure(env: "SConsEnvironment"):
 
     if not env["builtin_libwebp"]:
         env.ParseConfig("pkg-config libwebp --cflags --libs")
+        env.Append(LIBS=["sharpyuv"])
 
     if not env["builtin_mbedtls"]:
         # mbedTLS only provides a pkgconfig file since 3.6.0, but we still support 2.28.x,
@@ -323,13 +321,13 @@ def configure(env: "SConsEnvironment"):
             if os.system("pkg-config --exists alsa") == 0:  # 0 means found
                 env.ParseConfig("pkg-config alsa --cflags --libs")
                 env.Append(CPPDEFINES=["ALSA_ENABLED"])
-                env.Append(LIBS=["asound"])
+                env.Append(LIBS=["asound","slog2"])
             else:
                 print_warning("ALSA development libraries not found. Disabling the ALSA audio driver.")
                 env["alsa"] = False
         else:
             env.Append(CPPDEFINES=["ALSA_ENABLED"])
-            env.Append(LIBS=["asound"])
+            env.Append(LIBS=["asound","slog2"])
 
     if env["pulseaudio"]:
         if not env["use_sowrap"]:
