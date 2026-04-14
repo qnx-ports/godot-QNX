@@ -318,12 +318,20 @@ def configure(env: "SConsEnvironment"):
         if not env["use_sowrap"]:
             if os.system("pkg-config --exists alsa") == 0:  # 0 means found
                 env.ParseConfig("pkg-config alsa --cflags --libs")
-                env.Append(CPPDEFINES=["ALSA_ENABLED", "ALSAMIDI_ENABLED"])
+                env.Append(CPPDEFINES=["ALSA_ENABLED"])
+                if not platform.system() == "QNX":
+                    env.Append(CPPDEFINES=["ALSAMIDI_ENABLED"])
+                else:
+                    env.Append(LIBS=["asound"])
             else:
                 print_warning("ALSA development libraries not found. Disabling the ALSA audio driver.")
                 env["alsa"] = False
         else:
-            env.Append(CPPDEFINES=["ALSA_ENABLED", "ALSAMIDI_ENABLED"])
+            env.Append(CPPDEFINES=["ALSA_ENABLED"])
+            if not platform.system() == "QNX":
+                env.Append(CPPDEFINES=["ALSAMIDI_ENABLED"])
+            else:
+                env.Append(LIBS=["asound"])
 
     if env["pulseaudio"]:
         if not env["use_sowrap"]:
