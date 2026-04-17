@@ -518,7 +518,14 @@ Error EGLManager::initialize(void *p_native_display) {
 	// If the above method fails, we don't support client extensions, so there's nothing to check.
 	if (eglGetError() == EGL_SUCCESS) {
 		const char *platform = _get_platform_extension_name();
-		if (!client_extensions_string.split(" ").has(platform)) {
+		Vector<String> exts = client_extensions_string.split(" ");
+		bool found = exts.has(platform);
+#if defined(__QNX__) || defined(__QNXNTO__)
+		if (!found && String(platform) == String("EGL_KHR_platform_wayland")) {
+			found = exts.has("EGL_EXT_platform_wayland");
+		}
+#endif
+		if (!found) {
 			ERR_FAIL_V_MSG(ERR_UNAVAILABLE, vformat("EGL platform extension \"%s\" not found.", platform));
 		}
 	}

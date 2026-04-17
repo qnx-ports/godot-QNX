@@ -207,9 +207,11 @@ static int glad_egl_find_core_egl(EGLDisplay display) {
     if (display == NULL) {
         display = EGL_NO_DISPLAY; /* this is usually NULL, better safe than sorry */
     }
+#ifndef __QNX__
     if (display == EGL_NO_DISPLAY) {
         display = eglGetCurrentDisplay();
     }
+#endif
 #ifdef EGL_VERSION_1_4
     if (display == EGL_NO_DISPLAY) {
         display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
