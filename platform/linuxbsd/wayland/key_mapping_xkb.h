@@ -34,6 +34,10 @@
 #include "core/os/keyboard.h"
 #include "core/templates/hash_map.h"
 
+#ifdef __QNX__
+#include <sys/usbcodes.h>
+#endif // __QNX__
+
 #ifdef SOWRAP_ENABLED
 #include "xkbcommon-so_wrap.h"
 #else

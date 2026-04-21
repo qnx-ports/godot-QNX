@@ -209,8 +209,15 @@ Ref<InputEventKey> WaylandThread::_seat_state_get_key_event(SeatState *p_ss, xkb
 		plain_key = KeyMappingXKB::get_keycode(syms[0]);
 	}
 
+#ifdef __QNX__
+	unsigned int qnx_keycode = p_keycode - 8;
+	Key physical_keycode = KeyMappingXKB::get_scancode(qnx_keycode);
+	KeyLocation key_location = KeyMappingXKB::get_location(qnx_keycode);
+#else
 	Key physical_keycode = KeyMappingXKB::get_scancode(p_keycode);
 	KeyLocation key_location = KeyMappingXKB::get_location(p_keycode);
+#endif // __QNX__
+
 	uint32_t unicode = xkb_state_key_get_utf32(p_ss->xkb_state, p_keycode);
 
 	Key keycode = Key::NONE;
