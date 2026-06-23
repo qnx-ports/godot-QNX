@@ -1026,18 +1026,12 @@ String OS_Unix::get_executable_path() const {
 
 	return path;
 #elif defined(__QNXNTO__)
-	Error err;
-	Ref<FileAccess> f = FileAccess::open("/proc/self/exefile", FileAccess::READ, &err);
-	String path;
-	if (f.is_valid()) {
-		path = f->get_line().strip_edges();
+	const char *cmdname = _cmdname(nullptr);
+	if (cmdname == nullptr) {
+	    WARN_PRINT("Couldn't get executable path from _cmdname(), using argv[0]");
+	    return OS::get_executable_path();
 	}
-
-	if (path.is_empty()) {
-		WARN_PRINT("Couldn't get executable path from /proc/self/exefile, using argv[0]");
-		return OS::get_executable_path();
-	}
-	return path;
+	return String(cmdname);
 #else
 	ERR_PRINT("Warning, don't know how to obtain executable path on this OS! Please override this function properly.");
 	return OS::get_executable_path();
